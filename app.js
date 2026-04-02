@@ -636,7 +636,7 @@ const App = {
 
     // Frame - draw thick border around the board
     if (tpl.hasFrame) {
-      const fw = Math.max(8, bbW * 0.02);
+      const fw = Math.max(16, bbW * 0.04);
       ctx.fillStyle = this.bbFrameColor;
       ctx.fillRect(bbX - fw, bbY - fw, bbW + fw * 2, bbH + fw * 2);
     }
@@ -683,7 +683,7 @@ const App = {
 
       const rowH = (bbH - titleH) / (rows.length || 1);
       const labelW = bbW * 0.32;
-      const cellPad = Math.max(10, bbW * 0.03);
+      const cellPad = Math.max(20, bbW * 0.06);
       const canvasBorderW = Math.max(1, this.bbBorderWidth * scaleX * (this.bbScale / 100));
 
       rows.forEach((row, i) => {
