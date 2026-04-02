@@ -684,7 +684,13 @@ const App = {
       // Build rows: custom rows or filtered fields
       let rows;
       if (tpl.id === 'custom') {
-        rows = (data.customRows || []).filter(r => r.label || r.value).map(r => ({ label: r.label, value: r.value }));
+        const customSrc = data.customRows || [
+          { label: '工事名', value: data.constructionName || '' },
+          { label: '撮影箇所', value: data.location || '' },
+          { label: '撮影日', value: this.todayStr() },
+          { label: '受注者', value: data.contractor || '' },
+        ];
+        rows = customSrc.filter(r => r.label || r.value).map(r => ({ label: r.label, value: r.value }));
       } else {
         const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
         rows = visibleFields.map(f => ({ label: this.getFieldLabel(f), value: data[f] || '' }));
@@ -764,7 +770,7 @@ const App = {
       const rows = data.customRows || [
         { label: '工事名', value: data.constructionName || '' },
         { label: '撮影箇所', value: data.location || '' },
-        { label: '撮影日', value: data.date || '' },
+        { label: '撮影日', value: this.todayStr() },
         { label: '受注者', value: data.contractor || '' },
       ];
       const cs = `padding:${this.bbRowHeight}px ${this.bbCellPad}px;border-width:${this.bbBorderWidth}px`;
@@ -923,11 +929,21 @@ const App = {
     if (tpl.layout === 'freeform') {
       html += `<label>自由記述<textarea id="bb-edit-freeText" rows="6">${this.esc(this.bbData.freeText || '')}</textarea></label>`;
     } else if (tpl.id === 'custom') {
+      // Date format selector for custom template
+      html += `<div style="margin-bottom:12px;"><span style="font-size:14px;color:var(--accent);font-weight:600;">日付形式</span>`;
+      html += `<div style="display:flex;gap:8px;margin-top:6px;">`;
+      html += `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text);background:var(--bg-surface);padding:6px 10px;border-radius:8px;border:1px solid ${this.bbDateFormat==='slash'?'var(--accent)':'var(--border)'};cursor:pointer;">`;
+      html += `<input type="radio" name="dateFormat" value="slash" ${this.bbDateFormat==='slash'?'checked':''} onchange="App.bbDateFormat='slash'"> 2026/04/03</label>`;
+      html += `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text);background:var(--bg-surface);padding:6px 10px;border-radius:8px;border:1px solid ${this.bbDateFormat==='kanji'?'var(--accent)':'var(--border)'};cursor:pointer;">`;
+      html += `<input type="radio" name="dateFormat" value="kanji" ${this.bbDateFormat==='kanji'?'checked':''} onchange="App.bbDateFormat='kanji'"> 2026年04月03日</label>`;
+      html += `</div></div>`;
+      html += '<div style="border-bottom:1px solid var(--border);margin-bottom:12px;"></div>';
+
       // Custom template: editable labels and values
       const rows = this.bbData.customRows || [
         { label: '工事名', value: this.bbData.constructionName || '' },
         { label: '撮影箇所', value: this.bbData.location || '' },
-        { label: '撮影日', value: this.bbData.date || '' },
+        { label: '撮影日', value: this.todayStr() },
         { label: '受注者', value: this.bbData.contractor || '' },
       ];
       html += '<div id="custom-rows">';
