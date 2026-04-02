@@ -108,6 +108,7 @@ const App = {
   bbBorderWidth: 1, // table border width in px
   bbFrameWidth: 6,  // outer frame width in px
   bbCellPad: 8,     // text margin in px
+  savedPresets: [],  // user-saved blackboard presets
   FRAME_COLORS: [
     { name: '木目', color: '#8B7332' },
     { name: '焦茶', color: '#4A2F1B' },
@@ -139,6 +140,7 @@ const App = {
     await this.initDB();
     await this.loadSettings();
     await this.loadMasters();
+    await this.loadPresets();
     this.renderProjectList();
     this.initBBDrag();
     this.renderTemplateGrid();
@@ -1084,6 +1086,7 @@ const App = {
   // Template Selector
   // ═══════════════════════════════════════════════════════════════
   showTemplateSelector() {
+    this.renderSavedPresets();
     this.renderTemplateGrid();
     this.openModal('modal-template');
   },
@@ -1147,6 +1150,160 @@ const App = {
     this.closeModal('modal-template');
     this.renderBlackboard();
     this.toast(`${tpl.name} を選択しました`);
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // Preset Save / Load / Delete
+  // ═══════════════════════════════════════════════════════════════
+  async loadPresets() {
+    const data = await this.dbGet('settings', 'bb-presets');
+    this.savedPresets = data ? data.value : [];
+  },
+
+  async _savePresets() {
+    await this.dbPut('settings', { key: 'bb-presets', value: this.savedPresets });
+  },
+
+  _captureCurrentSettings() {
+    return {
+      templateId: this.currentTemplate.id,
+      scale: this.bbScale,
+      opacity: this.bbOpacity,
+      frameColor: this.bbFrameColor,
+      frameWidth: this.bbFrameWidth,
+      cellPad: this.bbCellPad,
+      rowHeight: this.bbRowHeight,
+      borderWidth: this.bbBorderWidth,
+      hiddenFields: [...this.bbHiddenFields],
+      customLabels: { ...this.bbCustomLabels },
+      bbData: { ...this.bbData },
+    };
+  },
+
+  _applyPreset(preset) {
+    // Restore template
+    const tpl = BB_TEMPLATES.find(t => t.id === preset.templateId);
+    if (tpl) this.currentTemplate = tpl;
+
+    // Restore all settings
+    if (preset.scale != null) this.bbScale = preset.scale;
+    if (preset.opacity != null) this.bbOpacity = preset.opacity;
+    if (preset.frameColor) this.bbFrameColor = preset.frameColor;
+    if (preset.frameWidth != null) this.bbFrameWidth = preset.frameWidth;
+    if (preset.cellPad != null) this.bbCellPad = preset.cellPad;
+    if (preset.rowHeight != null) this.bbRowHeight = preset.rowHeight;
+    if (preset.borderWidth != null) this.bbBorderWidth = preset.borderWidth;
+    if (preset.hiddenFields) this.bbHiddenFields = [...preset.hiddenFields];
+    if (preset.customLabels) this.bbCustomLabels = { ...preset.customLabels };
+    if (preset.bbData) this.bbData = { ...this.bbData, ...preset.bbData };
+
+    // Sync UI controls
+    this._syncAllControls();
+  },
+
+  _syncAllControls() {
+    const pairs = [
+      ['bb-opacity', 'bb-opacity-num', this.bbOpacity],
+      ['bb-scale', 'bb-scale-num', this.bbScale],
+      ['bb-row-height', 'bb-row-height-num', this.bbRowHeight],
+      ['bb-border-width', 'bb-border-width-num', this.bbBorderWidth],
+      ['bb-frame-width', 'bb-frame-width-num', this.bbFrameWidth],
+      ['bb-cell-pad', 'bb-cell-pad-num', this.bbCellPad],
+    ];
+    pairs.forEach(([sliderId, numId, val]) => {
+      const s = document.getElementById(sliderId);
+      const n = document.getElementById(numId);
+      if (s) s.value = val;
+      if (n) n.value = val;
+    });
+    this.renderFrameColorPicker();
+  },
+
+  saveCurrentAsPreset() {
+    const name = prompt('黒板の名前を入力してください：');
+    if (!name || !name.trim()) return;
+
+    const preset = {
+      id: 'preset_' + Date.now(),
+      name: name.trim(),
+      ...this._captureCurrentSettings(),
+      createdAt: Date.now(),
+    };
+    this.savedPresets.push(preset);
+    this._savePresets();
+    this.renderTemplateGrid();
+    this.renderSavedPresets();
+    this.toast(`「${preset.name}」を保存しました`);
+  },
+
+  loadPresetById(id) {
+    const preset = this.savedPresets.find(p => p.id === id);
+    if (!preset) return;
+    this._applyPreset(preset);
+    this.closeModal('modal-template');
+    this.renderBlackboard();
+    this.toast(`「${preset.name}」を読み込みました`);
+  },
+
+  deletePresetById(id) {
+    const preset = this.savedPresets.find(p => p.id === id);
+    if (!preset) return;
+    if (!confirm(`「${preset.name}」を削除しますか？`)) return;
+    this.savedPresets = this.savedPresets.filter(p => p.id !== id);
+    this._savePresets();
+    this.renderSavedPresets();
+    this.toast('削除しました');
+  },
+
+  renderSavedPresets() {
+    const grid = document.getElementById('saved-preset-grid');
+    if (!grid) return;
+
+    if (this.savedPresets.length === 0) {
+      grid.innerHTML = '<p style="color:var(--text-secondary);font-size:13px;padding:8px;">保存された黒板はありません</p>';
+      return;
+    }
+
+    grid.innerHTML = this.savedPresets.map(preset => {
+      const tpl = BB_TEMPLATES.find(t => t.id === preset.templateId) || BB_TEMPLATES[0];
+      const fw = preset.frameWidth || 6;
+      const fc = preset.frameColor || '#8B7332';
+      const frameStyle = tpl.hasFrame ? `border:${Math.min(fw, 4)}px solid ${fc};` : '';
+
+      let preview = `<div class="bb ${tpl.cssClass}" style="width:180px;font-size:9px;${frameStyle}">`;
+      preview += '<table class="bb-table"><tbody>';
+
+      // Show a few fields from saved data
+      const sampleFields = ['constructionName', 'workType', 'location', 'date'];
+      const hidden = preset.hiddenFields || [];
+      const labels = preset.customLabels || {};
+      const data = preset.bbData || {};
+
+      if (tpl.id === 'custom' && data.customRows) {
+        data.customRows.slice(0, 4).forEach(r => {
+          if (r.label || r.value) {
+            preview += `<tr><th style="font-size:8px;width:50px;padding:1px 3px;">${this.esc(r.label)}</th><td style="font-size:8px;padding:1px 3px;">${this.esc(r.value) || ''}</td></tr>`;
+          }
+        });
+      } else {
+        const visibleFields = (tpl.fields || ALL_FIELDS).filter(f => !hidden.includes(f));
+        visibleFields.slice(0, 5).forEach(f => {
+          const lbl = labels[f] || FIELD_LABELS[f] || f;
+          const val = data[f] || '';
+          preview += `<tr><th style="font-size:8px;width:50px;padding:1px 3px;">${this.esc(lbl)}</th><td style="font-size:8px;padding:1px 3px;">${this.esc(val) || ''}</td></tr>`;
+        });
+      }
+      preview += '</tbody></table></div>';
+
+      return `
+        <div class="template-card" onclick="App.loadPresetById('${preset.id}')">
+          <div class="template-preview">${preview}</div>
+          <div class="template-name-row">
+            <span>${this.esc(preset.name)}</span>
+            <button class="template-delete-btn" onclick="event.stopPropagation();App.deletePresetById('${preset.id}')">&#128465;</button>
+          </div>
+        </div>`;
+    }).join('');
   },
 
   // ═══════════════════════════════════════════════════════════════

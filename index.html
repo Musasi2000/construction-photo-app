@@ -229,6 +229,14 @@
         <button class="btn-icon" onclick="App.closeModal('modal-template')">&#10005;</button>
       </div>
       <div class="modal-body">
+        <div style="margin-bottom:12px;">
+          <button class="btn-primary btn-full" onclick="App.saveCurrentAsPreset()" style="text-align:center;">
+            &#128190; 現在の黒板を名前を付けて保存
+          </button>
+        </div>
+        <h3 style="font-size:13px;color:var(--accent);margin-bottom:8px;">保存済み黒板</h3>
+        <div class="template-grid" id="saved-preset-grid"></div>
+        <h3 style="font-size:13px;color:var(--text-secondary);margin:16px 0 8px;">プリセット</h3>
         <div class="template-grid" id="template-grid"></div>
       </div>
     </div>
