@@ -104,6 +104,7 @@ const App = {
   bbFrameColor: '#8B7332',
   bbHiddenFields: [], // fields hidden by user
   bbCustomLabels: {}, // field -> custom label name
+  bbRowHeight: 10, // row padding in px
   FRAME_COLORS: [
     { name: '木目', color: '#8B7332' },
     { name: '焦茶', color: '#4A2F1B' },
@@ -753,19 +754,21 @@ const App = {
         { label: '撮影日', value: data.date || '' },
         { label: '受注者', value: data.contractor || '' },
       ];
+      const rp = `${this.bbRowHeight}px 6px`;
       html += '<table class="bb-table"><tbody>';
       rows.forEach(row => {
         if (row.label || row.value) {
-          html += `<tr><th>${this.esc(row.label)}</th><td>${this.esc(row.value) || '&nbsp;'}</td></tr>`;
+          html += `<tr><th style="padding:${rp}">${this.esc(row.label)}</th><td style="padding:${rp}">${this.esc(row.value) || '&nbsp;'}</td></tr>`;
         }
       });
       html += '</tbody></table>';
     } else {
+      const rp = `${this.bbRowHeight}px 6px`;
       const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
       html += '<table class="bb-table"><tbody>';
       visibleFields.forEach(field => {
         const val = data[field] || '';
-        html += `<tr><th>${this.esc(this.getFieldLabel(field))}</th><td>${this.esc(val) || '&nbsp;'}</td></tr>`;
+        html += `<tr><th style="padding:${rp}">${this.esc(this.getFieldLabel(field))}</th><td style="padding:${rp}">${this.esc(val) || '&nbsp;'}</td></tr>`;
       });
       html += '</tbody></table>';
     }
@@ -805,6 +808,14 @@ const App = {
   setBlackboardScale(val) {
     this.bbScale = parseInt(val);
     this.renderBlackboard();
+  },
+
+  setRowHeight(val) {
+    this.bbRowHeight = parseInt(val);
+    // Apply padding to all table cells
+    document.querySelectorAll('#blackboard-overlay .bb-table td, #blackboard-overlay .bb-table th').forEach(cell => {
+      cell.style.padding = `${this.bbRowHeight}px 6px`;
+    });
   },
 
   // ─── Blackboard Drag ───
