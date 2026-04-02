@@ -103,6 +103,7 @@ const App = {
   bbOpacity: 0,
   bbFrameColor: '#8B7332',
   bbHiddenFields: [], // fields hidden by user
+  bbCustomLabels: {}, // field -> custom label name
   FRAME_COLORS: [
     { name: '木目', color: '#8B7332' },
     { name: '焦茶', color: '#4A2F1B' },
@@ -448,6 +449,10 @@ const App = {
     const savedHidden = await this.dbGet('settings', 'bbhidden-' + id);
     this.bbHiddenFields = savedHidden ? savedHidden.value : [];
 
+    // Load custom labels
+    const savedLabels = await this.dbGet('settings', 'bblabels-' + id);
+    this.bbCustomLabels = savedLabels ? savedLabels.value : {};
+
     await this.startCamera();
   },
 
@@ -648,36 +653,13 @@ const App = {
     const textColor = tpl.cssClass.includes('bb-white') ? '#222222' : '#ffffff';
     const borderColor = tpl.cssClass.includes('bb-white') ? '#999999' : 'rgba(255,255,255,0.4)';
 
-    // Title bar
-    const titleH = bbH * 0.12;
-    if (tpl.cssClass.includes('bb-white')) {
-      ctx.fillStyle = '#e0e0d8';
-    } else if (tpl.cssClass.includes('bb-black')) {
-      ctx.fillStyle = '#111111';
-    } else {
-      ctx.fillStyle = '#1a4a28';
-    }
-    ctx.fillRect(bbX, bbY, bbW, titleH);
-
-    ctx.fillStyle = textColor;
-    const titleFontSize = Math.max(12, titleH * 0.6);
-    ctx.font = `bold ${titleFontSize}px 'Hiragino Kaku Gothic ProN', sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(tpl.titleText, bbX + bbW / 2, bbY + titleH / 2);
-
-    // Title border
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(bbX, bbY + titleH);
-    ctx.lineTo(bbX + bbW, bbY + titleH);
-    ctx.stroke();
+    // Title bar removed
+    const titleH = 0;
 
     // Fields
     if (tpl.layout === 'freeform') {
-      const bodyY = bbY + titleH + 4;
-      const bodyH = bbH - titleH - 4;
+      const bodyY = bbY + 4;
+      const bodyH = bbH - 4;
       ctx.fillStyle = textColor;
       const freeSize = Math.max(10, bodyH * 0.1);
       ctx.font = `${freeSize}px 'Hiragino Kaku Gothic ProN', sans-serif`;
@@ -694,7 +676,7 @@ const App = {
         rows = (data.customRows || []).filter(r => r.label || r.value).map(r => ({ label: r.label, value: r.value }));
       } else {
         const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
-        rows = visibleFields.map(f => ({ label: FIELD_LABELS[f] || f, value: data[f] || '' }));
+        rows = visibleFields.map(f => ({ label: this.getFieldLabel(f), value: data[f] || '' }));
       }
 
       const rowH = (bbH - titleH) / (rows.length || 1);
@@ -760,8 +742,7 @@ const App = {
     let frameStyle = tpl.hasFrame ? ` border: 6px solid ${this.bbFrameColor};` : '';
     let html = `<div class="bb ${tpl.cssClass}" style="${frameStyle}" onclick="App.showBBEditor()">`;
 
-    // Title
-    html += `<div class="bb-title-bar">${this.esc(tpl.titleText)}</div>`;
+    // Title bar removed per user request
 
     if (tpl.layout === 'freeform') {
       html += `<div class="bb-free-body">${this.esc(data.freeText || 'タップして入力')}</div>`;
@@ -784,7 +765,7 @@ const App = {
       html += '<table class="bb-table"><tbody>';
       visibleFields.forEach(field => {
         const val = data[field] || '';
-        html += `<tr><th>${FIELD_LABELS[field]}</th><td>${this.esc(val) || '&nbsp;'}</td></tr>`;
+        html += `<tr><th>${this.esc(this.getFieldLabel(field))}</th><td>${this.esc(val) || '&nbsp;'}</td></tr>`;
       });
       html += '</tbody></table>';
     }
@@ -794,16 +775,18 @@ const App = {
 
     container.innerHTML = html;
 
-    // Apply scale & position
+    // Apply scale using transform (maintains aspect ratio)
+    const baseWidth = tpl.layout === 'horizontal' ? 320 : 260;
+    container.style.width = baseWidth + 'px';
     const scalePct = this.bbScale / 100;
-    const maxWidth = tpl.layout === 'horizontal' ? 500 : 400;
-    container.style.width = (maxWidth * scalePct) + 'px';
+    container.style.transform = `scale(${scalePct})`;
+    container.style.transformOrigin = 'top left';
 
     const cameraContainer = document.querySelector('.camera-container');
     const ch = cameraContainer?.offsetHeight || window.innerHeight;
 
     if (this.bbPosition.y === null) {
-      this.bbPosition.y = ch - container.offsetHeight - 120;
+      this.bbPosition.y = ch - (container.offsetHeight * scalePct) - 120;
     }
     container.style.left = this.bbPosition.x + 'px';
     container.style.top = this.bbPosition.y + 'px';
@@ -912,24 +895,33 @@ const App = {
     } else {
       const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
       visibleFields.forEach(field => {
-        const label = FIELD_LABELS[field];
+        const defaultLabel = FIELD_LABELS[field];
+        const currentLabel = this.getFieldLabel(field);
         const val = this.bbData[field] || '';
+
+        // Label editor row
+        html += `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">`;
+        html += `<input type="text" id="bb-label-${field}" value="${this.esc(currentLabel)}" placeholder="${defaultLabel}" style="width:100px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg-surface);color:var(--accent);font-size:13px;font-weight:600;min-height:36px;">`;
+        if (this.bbCustomLabels[field]) {
+          html += `<button onclick="App.resetFieldLabel('${field}')" style="border:none;background:none;color:var(--text-secondary);font-size:11px;cursor:pointer;white-space:nowrap;">リセット</button>`;
+        }
+        html += `</div>`;
 
         if (field === 'date') {
           const isoDate = this.bbData.date ? this.bbData.date.replace(/\//g, '-') : '';
-          html += `<label>${label}<input type="date" id="bb-edit-${field}" value="${isoDate}"></label>`;
+          html += `<label style="margin-left:0;"><input type="date" id="bb-edit-${field}" value="${isoDate}"></label>`;
         } else if (field === 'notes') {
-          html += `<label>${label}<textarea id="bb-edit-${field}" rows="3">${this.esc(val)}</textarea></label>`;
+          html += `<label style="margin-left:0;"><textarea id="bb-edit-${field}" rows="3">${this.esc(val)}</textarea></label>`;
         } else if (field === 'workType') {
-          html += `<label>${label}<input type="text" id="bb-edit-${field}" value="${this.esc(val)}" list="list-workType"></label>`;
+          html += `<label style="margin-left:0;"><input type="text" id="bb-edit-${field}" value="${this.esc(val)}" list="list-workType"></label>`;
           html += `<datalist id="list-workType">${this.masters.workType.map(v => `<option value="${this.esc(v)}">`).join('')}</datalist>`;
           html += this.renderSuggestions(field, this.masters.workType);
         } else if (field === 'category') {
-          html += `<label>${label}<input type="text" id="bb-edit-${field}" value="${this.esc(val)}" list="list-category"></label>`;
+          html += `<label style="margin-left:0;"><input type="text" id="bb-edit-${field}" value="${this.esc(val)}" list="list-category"></label>`;
           html += `<datalist id="list-category">${this.masters.category.map(v => `<option value="${this.esc(v)}">`).join('')}</datalist>`;
           html += this.renderSuggestions(field, this.masters.category);
         } else {
-          html += `<label>${label}<input type="text" id="bb-edit-${field}" value="${this.esc(val)}"></label>`;
+          html += `<label style="margin-left:0;"><input type="text" id="bb-edit-${field}" value="${this.esc(val)}"></label>`;
         }
 
         // Add history suggestions for location
@@ -964,6 +956,11 @@ const App = {
     const photos = await this.dbGetByIndex('photos', 'projectId', this.currentProject.id);
     const locations = [...new Set(photos.map(p => p.bbData?.location).filter(Boolean))];
     return locations.slice(-10);
+  },
+
+  resetFieldLabel(field) {
+    delete this.bbCustomLabels[field];
+    this.showBBEditor(); // re-render
   },
 
   toggleFieldVisibility(field) {
@@ -1012,6 +1009,17 @@ const App = {
     } else {
       const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
       visibleFields.forEach(field => {
+        // Save custom label
+        const labelEl = document.getElementById('bb-label-' + field);
+        if (labelEl) {
+          const newLabel = labelEl.value.trim();
+          if (newLabel && newLabel !== FIELD_LABELS[field]) {
+            this.bbCustomLabels[field] = newLabel;
+          } else {
+            delete this.bbCustomLabels[field];
+          }
+        }
+        // Save value
         const el = document.getElementById('bb-edit-' + field);
         if (!el) return;
         if (field === 'date') {
@@ -1027,6 +1035,7 @@ const App = {
     if (this.currentProject) {
       this.dbPut('settings', { key: 'bbdata-' + this.currentProject.id, value: this.bbData });
       this.dbPut('settings', { key: 'bbhidden-' + this.currentProject.id, value: this.bbHiddenFields });
+      this.dbPut('settings', { key: 'bblabels-' + this.currentProject.id, value: this.bbCustomLabels });
     }
   },
 
@@ -1058,7 +1067,7 @@ const App = {
 
       let frameStyle = tpl.hasFrame ? `border:6px solid ${this.bbFrameColor};` : '';
       let preview = `<div class="bb ${tpl.cssClass}" style="width:180px;font-size:9px;${frameStyle}">`;
-      preview += `<div class="bb-title-bar" style="font-size:10px;padding:2px 4px;">${tpl.titleText}</div>`;
+      // Title bar removed
 
       if (tpl.layout === 'freeform') {
         preview += `<div class="bb-free-body" style="font-size:9px;min-height:30px;">${this.esc(previewData.freeText)}</div>`;
@@ -1256,6 +1265,10 @@ const App = {
   // ═══════════════════════════════════════════════════════════════
   // Utilities
   // ═══════════════════════════════════════════════════════════════
+  getFieldLabel(field) {
+    return this.bbCustomLabels[field] || FIELD_LABELS[field] || field;
+  },
+
   todayStr() {
     const d = new Date();
     return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
