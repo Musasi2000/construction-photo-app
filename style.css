@@ -366,7 +366,28 @@ html, body {
   gap: 2px;
 }
 .blackboard-controls input[type="range"] {
-  width: 100px;
+  width: 80px;
+}
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.blackboard-controls input[type="number"] {
+  width: 42px;
+  padding: 2px 3px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 4px;
+  background: rgba(0,0,0,0.4);
+  color: white;
+  font-size: 11px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.blackboard-controls input[type="number"]::-webkit-inner-spin-button,
+.blackboard-controls input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 /* Frame color picker */

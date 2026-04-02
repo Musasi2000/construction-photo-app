@@ -106,6 +106,8 @@ const App = {
   bbCustomLabels: {}, // field -> custom label name
   bbRowHeight: 10, // row padding in px
   bbBorderWidth: 1, // table border width in px
+  bbFrameWidth: 6,  // outer frame width in px
+  bbCellPad: 8,     // text margin in px
   FRAME_COLORS: [
     { name: '木目', color: '#8B7332' },
     { name: '焦茶', color: '#4A2F1B' },
@@ -636,7 +638,7 @@ const App = {
 
     // Frame - draw thick border around the board
     if (tpl.hasFrame) {
-      const fw = Math.max(16, bbW * 0.04);
+      const fw = this.bbFrameWidth * scaleX * (this.bbScale / 100);
       ctx.fillStyle = this.bbFrameColor;
       ctx.fillRect(bbX - fw, bbY - fw, bbW + fw * 2, bbH + fw * 2);
     }
@@ -683,7 +685,7 @@ const App = {
 
       const rowH = (bbH - titleH) / (rows.length || 1);
       const labelW = bbW * 0.32;
-      const cellPad = Math.max(20, bbW * 0.06);
+      const cellPad = this.bbCellPad * scaleX * (this.bbScale / 100);
       const canvasBorderW = Math.max(1, this.bbBorderWidth * scaleX * (this.bbScale / 100));
 
       rows.forEach((row, i) => {
@@ -744,7 +746,7 @@ const App = {
     const tpl = this.currentTemplate;
     const data = this.bbData;
 
-    let frameStyle = tpl.hasFrame ? ` border: 6px solid ${this.bbFrameColor};` : '';
+    let frameStyle = tpl.hasFrame ? ` border: ${this.bbFrameWidth}px solid ${this.bbFrameColor};` : '';
     let html = `<div class="bb ${tpl.cssClass}" style="${frameStyle}" onclick="App.showBBEditor()">`;
 
     // Title bar removed per user request
@@ -758,7 +760,7 @@ const App = {
         { label: '撮影日', value: data.date || '' },
         { label: '受注者', value: data.contractor || '' },
       ];
-      const cs = `padding:${this.bbRowHeight}px 6px;border-width:${this.bbBorderWidth}px`;
+      const cs = `padding:${this.bbRowHeight}px ${this.bbCellPad}px;border-width:${this.bbBorderWidth}px`;
       html += '<table class="bb-table"><tbody>';
       rows.forEach(row => {
         if (row.label || row.value) {
@@ -767,7 +769,7 @@ const App = {
       });
       html += '</tbody></table>';
     } else {
-      const cs = `padding:${this.bbRowHeight}px 6px;border-width:${this.bbBorderWidth}px`;
+      const cs = `padding:${this.bbRowHeight}px ${this.bbCellPad}px;border-width:${this.bbBorderWidth}px`;
       const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
       html += '<table class="bb-table"><tbody>';
       visibleFields.forEach(field => {
@@ -803,29 +805,47 @@ const App = {
     if (bbEl) bbEl.style.opacity = 1 - (this.bbOpacity / 100);
   },
 
-  setBlackboardOpacity(val) {
-    this.bbOpacity = parseInt(val);
-    const bbEl = document.querySelector('#blackboard-overlay .bb');
-    if (bbEl) bbEl.style.opacity = 1 - (this.bbOpacity / 100);
-  },
+  // Unified control sync: slider ↔ number input
+  syncControl(name, val) {
+    const v = parseFloat(val);
+    const controls = {
+      opacity:     { state: 'bbOpacity',     slider: 'bb-opacity',       num: 'bb-opacity-num',       rerender: false },
+      scale:       { state: 'bbScale',       slider: 'bb-scale',         num: 'bb-scale-num',         rerender: true },
+      rowHeight:   { state: 'bbRowHeight',   slider: 'bb-row-height',    num: 'bb-row-height-num',    rerender: false },
+      borderWidth: { state: 'bbBorderWidth', slider: 'bb-border-width',  num: 'bb-border-width-num',  rerender: false },
+      frameWidth:  { state: 'bbFrameWidth',  slider: 'bb-frame-width',   num: 'bb-frame-width-num',   rerender: false },
+      cellPad:     { state: 'bbCellPad',     slider: 'bb-cell-pad',      num: 'bb-cell-pad-num',      rerender: false },
+    };
+    const c = controls[name];
+    if (!c) return;
+    this[c.state] = v;
 
-  setBlackboardScale(val) {
-    this.bbScale = parseInt(val);
-    this.renderBlackboard();
-  },
+    // Sync slider ↔ number
+    const slider = document.getElementById(c.slider);
+    const num = document.getElementById(c.num);
+    if (slider) slider.value = v;
+    if (num) num.value = v;
 
-  setRowHeight(val) {
-    this.bbRowHeight = parseInt(val);
-    document.querySelectorAll('#blackboard-overlay .bb-table td, #blackboard-overlay .bb-table th').forEach(cell => {
-      cell.style.padding = `${this.bbRowHeight}px 6px`;
-    });
-  },
+    if (c.rerender) {
+      this.renderBlackboard();
+      return;
+    }
 
-  setBorderWidth(val) {
-    this.bbBorderWidth = parseFloat(val);
-    document.querySelectorAll('#blackboard-overlay .bb-table td, #blackboard-overlay .bb-table th').forEach(cell => {
-      cell.style.borderWidth = `${this.bbBorderWidth}px`;
-    });
+    // Apply without full re-render
+    if (name === 'opacity') {
+      const bbEl = document.querySelector('#blackboard-overlay .bb');
+      if (bbEl) bbEl.style.opacity = 1 - (this.bbOpacity / 100);
+    } else if (name === 'rowHeight' || name === 'borderWidth' || name === 'cellPad') {
+      document.querySelectorAll('#blackboard-overlay .bb-table td, #blackboard-overlay .bb-table th').forEach(cell => {
+        cell.style.padding = `${this.bbRowHeight}px ${this.bbCellPad}px`;
+        cell.style.borderWidth = `${this.bbBorderWidth}px`;
+      });
+    } else if (name === 'frameWidth') {
+      const bbEl = document.querySelector('#blackboard-overlay .bb');
+      if (bbEl && this.currentTemplate.hasFrame) {
+        bbEl.style.borderWidth = `${this.bbFrameWidth}px`;
+      }
+    }
   },
 
   // ─── Blackboard Drag ───
@@ -1086,7 +1106,7 @@ const App = {
         freeText: '自由にメモを\n記入できます',
       };
 
-      let frameStyle = tpl.hasFrame ? `border:6px solid ${this.bbFrameColor};` : '';
+      let frameStyle = tpl.hasFrame ? `border:${this.bbFrameWidth}px solid ${this.bbFrameColor};` : '';
       let preview = `<div class="bb ${tpl.cssClass}" style="width:180px;font-size:9px;${frameStyle}">`;
       // Title bar removed
 

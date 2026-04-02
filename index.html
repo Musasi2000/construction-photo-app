@@ -57,23 +57,57 @@
       <div class="blackboard-controls">
         <label>
           透過
-          <input type="range" id="bb-opacity" min="0" max="50" value="0"
-                 oninput="App.setBlackboardOpacity(this.value)">
+          <div class="slider-row">
+            <input type="range" id="bb-opacity" min="0" max="50" value="0"
+                   oninput="App.syncControl('opacity',this.value)">
+            <input type="number" id="bb-opacity-num" min="0" max="50" value="0"
+                   onchange="App.syncControl('opacity',this.value)">
+          </div>
         </label>
         <label>
-          大きさ
-          <input type="range" id="bb-scale" min="30" max="200" value="80"
-                 oninput="App.setBlackboardScale(this.value)">
+          大きさ%
+          <div class="slider-row">
+            <input type="range" id="bb-scale" min="30" max="200" value="80"
+                   oninput="App.syncControl('scale',this.value)">
+            <input type="number" id="bb-scale-num" min="30" max="200" value="80"
+                   onchange="App.syncControl('scale',this.value)">
+          </div>
         </label>
         <label>
-          行の高さ
-          <input type="range" id="bb-row-height" min="4" max="30" value="10"
-                 oninput="App.setRowHeight(this.value)">
+          行高px
+          <div class="slider-row">
+            <input type="range" id="bb-row-height" min="4" max="30" value="10"
+                   oninput="App.syncControl('rowHeight',this.value)">
+            <input type="number" id="bb-row-height-num" min="4" max="30" value="10"
+                   onchange="App.syncControl('rowHeight',this.value)">
+          </div>
         </label>
         <label>
-          罫線
-          <input type="range" id="bb-border-width" min="0" max="4" value="1" step="0.5"
-                 oninput="App.setBorderWidth(this.value)">
+          罫線px
+          <div class="slider-row">
+            <input type="range" id="bb-border-width" min="0" max="4" value="1" step="0.5"
+                   oninput="App.syncControl('borderWidth',this.value)">
+            <input type="number" id="bb-border-width-num" min="0" max="4" value="1" step="0.5"
+                   onchange="App.syncControl('borderWidth',this.value)">
+          </div>
+        </label>
+        <label>
+          外枠px
+          <div class="slider-row">
+            <input type="range" id="bb-frame-width" min="0" max="20" value="6"
+                   oninput="App.syncControl('frameWidth',this.value)">
+            <input type="number" id="bb-frame-width-num" min="0" max="20" value="6"
+                   onchange="App.syncControl('frameWidth',this.value)">
+          </div>
+        </label>
+        <label>
+          余白px
+          <div class="slider-row">
+            <input type="range" id="bb-cell-pad" min="2" max="30" value="8"
+                   oninput="App.syncControl('cellPad',this.value)">
+            <input type="number" id="bb-cell-pad-num" min="2" max="30" value="8"
+                   onchange="App.syncControl('cellPad',this.value)">
+          </div>
         </label>
         <label>
           枠色
