@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <rect width="192" height="192" rx="38" fill="#2d5a3b"/>
+  <rect x="50" y="55" width="92" height="65" rx="6" fill="white"/>
+  <circle cx="96" cy="90" r="18" fill="#2d5a3b"/>
+  <circle cx="96" cy="90" r="9" fill="white"/>
+  <rect x="73" y="45" width="22" height="14" rx="4" fill="white"/>
+  <text x="96" y="155" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="white">工事写真</text>
+</svg>

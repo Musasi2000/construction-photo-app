@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="工事写真">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>工事写真 電子黒板</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ===== Screen: Project List (Home) ===== -->
+  <div id="screen-home" class="screen active">
+    <header class="app-header">
+      <h1>工事写真</h1>
+      <button class="btn-icon" onclick="App.showSettings()">&#9881;</button>
+    </header>
+    <div class="project-list" id="project-list"></div>
+    <button class="fab" onclick="App.showProjectEditor()">&#65291;</button>
+  </div>
+
+  <!-- ===== Screen: Camera ===== -->
+  <div id="screen-camera" class="screen">
+    <div class="camera-container">
+      <video id="camera-video" autoplay playsinline></video>
+      <canvas id="camera-canvas" style="display:none;"></canvas>
+
+      <!-- Blackboard overlay -->
+      <div id="blackboard-overlay" class="blackboard-overlay"></div>
+
+      <!-- Camera top bar -->
+      <div class="camera-top-bar">
+        <button class="btn-camera-ui" onclick="App.closeCamera()">&#10005;</button>
+        <span class="camera-project-name" id="camera-project-name"></span>
+        <button class="btn-camera-ui" onclick="App.toggleFlash()">&#9889;</button>
+      </div>
+
+      <!-- Camera bottom bar -->
+      <div class="camera-bottom-bar">
+        <button class="btn-camera-side" onclick="App.showGallery()">
+          <div class="gallery-thumb" id="gallery-thumb"></div>
+        </button>
+        <button class="btn-shutter" id="btn-shutter" onclick="App.capturePhoto()">
+          <div class="btn-shutter-inner"></div>
+        </button>
+        <button class="btn-camera-side" onclick="App.showTemplateSelector()">
+          <span style="font-size:20px;">&#9638;</span>
+          <span style="font-size:10px;">黒板</span>
+        </button>
+      </div>
+
+      <!-- Blackboard controls -->
+      <div class="blackboard-controls">
+        <label>
+          透過
+          <input type="range" id="bb-opacity" min="0" max="50" value="0"
+                 oninput="App.setBlackboardOpacity(this.value)">
+        </label>
+        <label>
+          大きさ
+          <input type="range" id="bb-scale" min="30" max="100" value="60"
+                 oninput="App.setBlackboardScale(this.value)">
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Screen: Gallery ===== -->
+  <div id="screen-gallery" class="screen">
+    <header class="app-header">
+      <button class="btn-icon" onclick="App.showCamera()">&#8592;</button>
+      <h1 id="gallery-title">写真一覧</h1>
+      <button class="btn-icon" onclick="App.exportPhotos()">&#8681;</button>
+    </header>
+    <div class="gallery-grid" id="gallery-grid"></div>
+  </div>
+
+  <!-- ===== Screen: Settings ===== -->
+  <div id="screen-settings" class="screen">
+    <header class="app-header">
+      <button class="btn-icon" onclick="App.showHome()">&#8592;</button>
+      <h1>設定</h1>
+      <span></span>
+    </header>
+    <div class="settings-content">
+      <div class="settings-group">
+        <h3>受注者情報</h3>
+        <label>会社名
+          <input type="text" id="setting-company" placeholder="株式会社○○建設">
+        </label>
+        <label>現場代理人
+          <input type="text" id="setting-manager" placeholder="山田太郎">
+        </label>
+      </div>
+      <div class="settings-group">
+        <h3>撮影設定</h3>
+        <label>写真品質
+          <select id="setting-quality">
+            <option value="0.95">高画質</option>
+            <option value="0.85" selected>標準</option>
+            <option value="0.70">軽量</option>
+          </select>
+        </label>
+        <label>
+          <input type="checkbox" id="setting-save-camera-roll" checked>
+          カメラロールにも保存
+        </label>
+        <label>
+          <input type="checkbox" id="setting-gps" checked>
+          GPS情報を記録
+        </label>
+      </div>
+      <div class="settings-group">
+        <h3>マスタ管理</h3>
+        <button class="btn-full" onclick="App.showMasterEditor('workType')">工種マスタ編集</button>
+        <button class="btn-full" onclick="App.showMasterEditor('category')">種別マスタ編集</button>
+      </div>
+      <div class="settings-group">
+        <h3>データ</h3>
+        <button class="btn-full" onclick="App.exportAllData()">データエクスポート</button>
+        <button class="btn-full" onclick="App.importData()">データインポート</button>
+      </div>
+      <button class="btn-full btn-primary" onclick="App.saveSettings()">保存</button>
+    </div>
+  </div>
+
+  <!-- ===== Modal: Project Editor ===== -->
+  <div id="modal-project" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="project-editor-title">新規物件</h2>
+        <button class="btn-icon" onclick="App.closeModal('modal-project')">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <label>工事名 <span class="required">*</span>
+          <input type="text" id="proj-name" placeholder="○○マンション新築工事">
+        </label>
+        <label>工事場所
+          <input type="text" id="proj-location" placeholder="東京都○○区○○町1-2-3">
+        </label>
+        <label>受注者名
+          <input type="text" id="proj-contractor" placeholder="設定から自動入力">
+        </label>
+        <label>工期開始
+          <input type="date" id="proj-start">
+        </label>
+        <label>工期終了
+          <input type="date" id="proj-end">
+        </label>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="App.closeModal('modal-project')">キャンセル</button>
+        <button class="btn-primary" onclick="App.saveProject()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: Blackboard Editor ===== -->
+  <div id="modal-bb-editor" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>黒板編集</h2>
+        <button class="btn-icon" onclick="App.closeModal('modal-bb-editor')">&#10005;</button>
+      </div>
+      <div class="modal-body" id="bb-editor-fields"></div>
+      <div class="modal-footer">
+        <button class="btn-primary btn-full" onclick="App.saveBBEdit()">完了</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: Template Selector ===== -->
+  <div id="modal-template" class="modal">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>黒板テンプレート</h2>
+        <button class="btn-icon" onclick="App.closeModal('modal-template')">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div class="template-grid" id="template-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Modal: Photo Viewer ===== -->
+  <div id="modal-photo-viewer" class="modal modal-dark">
+    <div class="photo-viewer-header">
+      <button class="btn-icon" onclick="App.closeModal('modal-photo-viewer')">&#10005;</button>
+      <span id="photo-viewer-info"></span>
+      <button class="btn-icon" onclick="App.deletePhoto()">&#128465;</button>
+    </div>
+    <div class="photo-viewer-body">
+      <img id="photo-viewer-img" src="" alt="写真">
+    </div>
+  </div>
+
+  <!-- ===== Modal: Master Editor ===== -->
+  <div id="modal-master" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="master-editor-title">マスタ編集</h2>
+        <button class="btn-icon" onclick="App.closeModal('modal-master')">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <div id="master-list"></div>
+        <div class="master-add">
+          <input type="text" id="master-new-item" placeholder="新しい項目を入力">
+          <button class="btn-primary" onclick="App.addMasterItem()">追加</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
