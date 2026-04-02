@@ -948,9 +948,11 @@ const App = {
       ];
       html += '<div id="custom-rows">';
       rows.forEach((row, i) => {
-        html += `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">`;
-        html += `<input type="text" id="custom-label-${i}" value="${this.esc(row.label)}" placeholder="項目名" style="width:90px;min-height:44px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface);color:var(--text);font-size:14px;">`;
+        html += `<div style="display:flex;gap:4px;margin-bottom:10px;align-items:center;">`;
+        html += `<input type="text" id="custom-label-${i}" value="${this.esc(row.label)}" placeholder="項目名" style="width:80px;min-height:44px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface);color:var(--text);font-size:14px;">`;
         html += `<input type="text" id="custom-value-${i}" value="${this.esc(row.value)}" placeholder="内容" style="flex:1;min-height:44px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface);color:var(--text);font-size:14px;">`;
+        html += `<input type="date" id="custom-date-${i}" style="position:absolute;opacity:0;width:0;height:0;" onchange="App.applyCustomDate(${i},this.value)">`;
+        html += `<button onclick="document.getElementById('custom-date-${i}').showPicker?document.getElementById('custom-date-${i}').showPicker():document.getElementById('custom-date-${i}').click()" style="width:36px;height:36px;border:none;background:var(--bg-surface);color:var(--accent);border-radius:8px;font-size:18px;cursor:pointer;border:1px solid var(--border);">&#128197;</button>`;
         html += `<button onclick="App.removeCustomRow(${i})" style="width:36px;height:36px;border:none;background:var(--danger);color:white;border-radius:50%;font-size:18px;cursor:pointer;">✕</button>`;
         html += `</div>`;
       });
@@ -1054,6 +1056,13 @@ const App = {
     this._readCustomRows();
     this.bbData.customRows.splice(index, 1);
     this.showBBEditor(); // re-render
+  },
+
+  applyCustomDate(index, isoValue) {
+    if (!isoValue) return;
+    const display = this.isoToDisplay(isoValue);
+    const el = document.getElementById('custom-value-' + index);
+    if (el) el.value = display;
   },
 
   _readCustomRows() {
