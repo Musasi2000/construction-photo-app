@@ -634,9 +634,9 @@ const App = {
       ctx.fillStyle = '#1e5a2f';
     }
 
-    // Frame
+    // Frame (6px in HTML, scaled to canvas)
     if (tpl.hasFrame) {
-      const frameWidth = 4 * scaleX;
+      const frameWidth = 6 * scaleX * (this.bbScale / 100);
       ctx.fillStyle = this.bbFrameColor;
       ctx.fillRect(bbX - frameWidth, bbY - frameWidth, bbW + frameWidth * 2, bbH + frameWidth * 2);
     }
@@ -705,16 +705,17 @@ const App = {
         ctx.stroke();
 
         // Label
+        const cellPad = Math.max(8, bbW * 0.02);
         const fontSize = Math.max(9, rowH * 0.45);
         ctx.fillStyle = textColor;
         ctx.font = `bold ${fontSize}px 'Hiragino Kaku Gothic ProN', sans-serif`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(row.label, bbX + 6, rowY + rowH / 2, labelW - 10);
+        ctx.fillText(row.label, bbX + cellPad, rowY + rowH / 2, labelW - cellPad * 2);
 
         // Value
         ctx.font = `${fontSize}px 'Hiragino Kaku Gothic ProN', sans-serif`;
-        ctx.fillText(row.value, bbX + labelW + 6, rowY + rowH / 2, bbW - labelW - 12);
+        ctx.fillText(row.value, bbX + labelW + cellPad, rowY + rowH / 2, bbW - labelW - cellPad * 2);
       });
     }
 
