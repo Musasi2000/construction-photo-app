@@ -1174,6 +1174,66 @@ const App = {
     this.toast('写真を削除しました');
   },
 
+  async savePhotoToDevice() {
+    if (!this.viewingPhotoId) return;
+    const photo = await this.dbGet('photos', this.viewingPhotoId);
+    if (!photo) return;
+
+    const dateStr = (photo.bbData?.date || '').replace(/\//g, '');
+    const loc = photo.bbData?.location || 'photo';
+    const projName = this.currentProject?.name || 'construction';
+    const fileName = `${projName}_${loc}_${dateStr}.jpg`;
+
+    // Try Web Share API with file (best for iPad Safari)
+    try {
+      const res = await fetch(photo.dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file] });
+        return;
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+
+    // Fallback: download link
+    const a = document.createElement('a');
+    a.href = photo.dataUrl;
+    a.download = fileName;
+    a.click();
+    this.toast('写真を保存しました');
+  },
+
+  async sharePhoto() {
+    if (!this.viewingPhotoId) return;
+    const photo = await this.dbGet('photos', this.viewingPhotoId);
+    if (!photo) return;
+
+    const dateStr = (photo.bbData?.date || '').replace(/\//g, '');
+    const loc = photo.bbData?.location || 'photo';
+    const projName = this.currentProject?.name || 'construction';
+    const fileName = `${projName}_${loc}_${dateStr}.jpg`;
+
+    try {
+      const res = await fetch(photo.dataUrl);
+      const blob = await res.blob();
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+      if (navigator.share) {
+        await navigator.share({
+          title: `${projName} - ${loc}`,
+          files: [file],
+        });
+        return;
+      }
+    } catch (e) {
+      if (e.name === 'AbortError') return;
+    }
+    this.toast('共有機能が利用できません');
+  },
+
   async updateGalleryThumb() {
     if (!this.currentProject) return;
     const photos = await this.dbGetByIndex('photos', 'projectId', this.currentProject.id);

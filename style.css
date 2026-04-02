@@ -783,6 +783,37 @@ html, body {
   object-fit: contain;
 }
 
+.photo-viewer-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 24px;
+  padding-bottom: calc(var(--safe-bottom) + 16px);
+  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+  z-index: 10;
+}
+.btn-photo-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 24px;
+  border: 1px solid rgba(255,255,255,0.3);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 100px;
+}
+.btn-photo-action:active {
+  background: rgba(255,255,255,0.25);
+}
+
 /* ===== Master Editor ===== */
 .master-item {
   display: flex;
