@@ -634,11 +634,11 @@ const App = {
       ctx.fillStyle = '#1e5a2f';
     }
 
-    // Frame (6px in HTML, scaled to canvas)
+    // Frame - draw thick border around the board
     if (tpl.hasFrame) {
-      const frameWidth = 6 * scaleX * (this.bbScale / 100);
+      const fw = Math.max(8, bbW * 0.02);
       ctx.fillStyle = this.bbFrameColor;
-      ctx.fillRect(bbX - frameWidth, bbY - frameWidth, bbW + frameWidth * 2, bbH + frameWidth * 2);
+      ctx.fillRect(bbX - fw, bbY - fw, bbW + fw * 2, bbH + fw * 2);
     }
 
     // Board background
@@ -682,13 +682,14 @@ const App = {
       }
 
       const rowH = (bbH - titleH) / (rows.length || 1);
-      const labelW = bbW * 0.28;
+      const labelW = bbW * 0.32;
+      const cellPad = Math.max(10, bbW * 0.03);
+      const canvasBorderW = Math.max(1, this.bbBorderWidth * scaleX * (this.bbScale / 100));
 
       rows.forEach((row, i) => {
         const rowY = bbY + titleH + i * rowH;
 
         // Row border
-        const canvasBorderW = Math.max(0.5, this.bbBorderWidth * (canvasW / containerRect.width));
         ctx.strokeStyle = borderColor;
         ctx.lineWidth = canvasBorderW;
         if (i > 0) {
@@ -705,7 +706,6 @@ const App = {
         ctx.stroke();
 
         // Label
-        const cellPad = Math.max(8, bbW * 0.02);
         const fontSize = Math.max(9, rowH * 0.45);
         ctx.fillStyle = textColor;
         ctx.font = `bold ${fontSize}px 'Hiragino Kaku Gothic ProN', sans-serif`;
@@ -720,7 +720,7 @@ const App = {
     }
 
     // Outer border
-    const outerBorderW = Math.max(1, this.bbBorderWidth * 2 * (canvasW / containerRect.width));
+    const outerBorderW = Math.max(2, this.bbBorderWidth * 2 * scaleX * (this.bbScale / 100));
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = outerBorderW;
     ctx.strokeRect(bbX, bbY, bbW, bbH);
