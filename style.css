@@ -367,6 +367,25 @@ html, body {
 }
 .blackboard-controls input[type="range"] {
   width: 100px;
+}
+
+/* Frame color picker */
+.frame-color-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+.frame-color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.frame-color-swatch.selected {
+  border-color: white;
+  box-shadow: 0 0 4px rgba(255,255,255,0.6);
   accent-color: var(--primary);
 }
 

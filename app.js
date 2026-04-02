@@ -92,6 +92,18 @@ const App = {
   bbPosition: { x: 10, y: null }, // y=null means auto (bottom)
   bbScale: 60,
   bbOpacity: 0,
+  bbFrameColor: '#8B7332',
+  FRAME_COLORS: [
+    { name: '木目', color: '#8B7332' },
+    { name: '焦茶', color: '#4A2F1B' },
+    { name: '黒', color: '#333333' },
+    { name: '白', color: '#CCCCCC' },
+    { name: '銀', color: '#888899' },
+    { name: '赤', color: '#8B2020' },
+    { name: '青', color: '#1E3A6E' },
+    { name: '緑', color: '#2E5A2E' },
+    { name: '金', color: '#B8860B' },
+  ],
   stream: null,
   photos: [],
   settings: {
@@ -448,11 +460,27 @@ const App = {
       this.toast('カメラにアクセスできません: ' + err.message);
     }
 
-    // Render blackboard
+    // Render blackboard + frame color picker
     this.renderBlackboard();
+    this.renderFrameColorPicker();
 
     // Load recent gallery thumb
     this.updateGalleryThumb();
+  },
+
+  renderFrameColorPicker() {
+    const container = document.getElementById('frame-color-picker');
+    if (!container) return;
+    container.innerHTML = this.FRAME_COLORS.map(fc => {
+      const sel = fc.color === this.bbFrameColor ? ' selected' : '';
+      return `<div class="frame-color-swatch${sel}" style="background:${fc.color};" title="${fc.name}" onclick="App.setFrameColor('${fc.color}')"></div>`;
+    }).join('');
+  },
+
+  setFrameColor(color) {
+    this.bbFrameColor = color;
+    this.renderBlackboard();
+    this.renderFrameColorPicker();
   },
 
   closeCamera() {
@@ -588,7 +616,7 @@ const App = {
     // Frame
     if (tpl.hasFrame) {
       const frameWidth = 4 * scaleX;
-      ctx.fillStyle = '#8B7332';
+      ctx.fillStyle = this.bbFrameColor;
       ctx.fillRect(bbX - frameWidth, bbY - frameWidth, bbW + frameWidth * 2, bbH + frameWidth * 2);
     }
 
@@ -708,8 +736,8 @@ const App = {
     const tpl = this.currentTemplate;
     const data = this.bbData;
 
-    let frameClass = tpl.hasFrame ? ' bb-wood-frame' : '';
-    let html = `<div class="bb ${tpl.cssClass}${frameClass}" onclick="App.showBBEditor()">`;
+    let frameStyle = tpl.hasFrame ? ` border: 6px solid ${this.bbFrameColor};` : '';
+    let html = `<div class="bb ${tpl.cssClass}" style="${frameStyle}" onclick="App.showBBEditor()">`;
 
     // Title
     html += `<div class="bb-title-bar">${this.esc(tpl.titleText)}</div>`;
@@ -920,7 +948,8 @@ const App = {
         freeText: '自由にメモを\n記入できます',
       };
 
-      let preview = `<div class="bb ${tpl.cssClass}${tpl.hasFrame ? ' bb-wood-frame' : ''}" style="width:180px;font-size:9px;">`;
+      let frameStyle = tpl.hasFrame ? `border:6px solid ${this.bbFrameColor};` : '';
+      let preview = `<div class="bb ${tpl.cssClass}" style="width:180px;font-size:9px;${frameStyle}">`;
       preview += `<div class="bb-title-bar" style="font-size:10px;padding:2px 4px;">${tpl.titleText}</div>`;
 
       if (tpl.layout === 'freeform') {
