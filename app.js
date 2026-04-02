@@ -105,6 +105,7 @@ const App = {
   bbHiddenFields: [], // fields hidden by user
   bbCustomLabels: {}, // field -> custom label name
   bbRowHeight: 10, // row padding in px
+  bbBorderWidth: 1, // table border width in px
   FRAME_COLORS: [
     { name: '木目', color: '#8B7332' },
     { name: '焦茶', color: '#4A2F1B' },
@@ -687,8 +688,9 @@ const App = {
         const rowY = bbY + titleH + i * rowH;
 
         // Row border
+        const canvasBorderW = Math.max(0.5, this.bbBorderWidth * (canvasW / containerRect.width));
         ctx.strokeStyle = borderColor;
-        ctx.lineWidth = 1;
+        ctx.lineWidth = canvasBorderW;
         if (i > 0) {
           ctx.beginPath();
           ctx.moveTo(bbX, rowY);
@@ -717,8 +719,9 @@ const App = {
     }
 
     // Outer border
+    const outerBorderW = Math.max(1, this.bbBorderWidth * 2 * (canvasW / containerRect.width));
     ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = outerBorderW;
     ctx.strokeRect(bbX, bbY, bbW, bbH);
 
     ctx.restore();
@@ -754,21 +757,21 @@ const App = {
         { label: '撮影日', value: data.date || '' },
         { label: '受注者', value: data.contractor || '' },
       ];
-      const rp = `${this.bbRowHeight}px 6px`;
+      const cs = `padding:${this.bbRowHeight}px 6px;border-width:${this.bbBorderWidth}px`;
       html += '<table class="bb-table"><tbody>';
       rows.forEach(row => {
         if (row.label || row.value) {
-          html += `<tr><th style="padding:${rp}">${this.esc(row.label)}</th><td style="padding:${rp}">${this.esc(row.value) || '&nbsp;'}</td></tr>`;
+          html += `<tr><th style="${cs}">${this.esc(row.label)}</th><td style="${cs}">${this.esc(row.value) || '&nbsp;'}</td></tr>`;
         }
       });
       html += '</tbody></table>';
     } else {
-      const rp = `${this.bbRowHeight}px 6px`;
+      const cs = `padding:${this.bbRowHeight}px 6px;border-width:${this.bbBorderWidth}px`;
       const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
       html += '<table class="bb-table"><tbody>';
       visibleFields.forEach(field => {
         const val = data[field] || '';
-        html += `<tr><th style="padding:${rp}">${this.esc(this.getFieldLabel(field))}</th><td style="padding:${rp}">${this.esc(val) || '&nbsp;'}</td></tr>`;
+        html += `<tr><th style="${cs}">${this.esc(this.getFieldLabel(field))}</th><td style="${cs}">${this.esc(val) || '&nbsp;'}</td></tr>`;
       });
       html += '</tbody></table>';
     }
@@ -812,9 +815,15 @@ const App = {
 
   setRowHeight(val) {
     this.bbRowHeight = parseInt(val);
-    // Apply padding to all table cells
     document.querySelectorAll('#blackboard-overlay .bb-table td, #blackboard-overlay .bb-table th').forEach(cell => {
       cell.style.padding = `${this.bbRowHeight}px 6px`;
+    });
+  },
+
+  setBorderWidth(val) {
+    this.bbBorderWidth = parseFloat(val);
+    document.querySelectorAll('#blackboard-overlay .bb-table td, #blackboard-overlay .bb-table th').forEach(cell => {
+      cell.style.borderWidth = `${this.bbBorderWidth}px`;
     });
   },
 

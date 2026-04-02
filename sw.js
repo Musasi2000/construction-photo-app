@@ -1,4 +1,4 @@
-const CACHE_NAME = 'construction-photo-v6';
+const CACHE_NAME = 'construction-photo-v7';
 const ASSETS = [
   './',
   './index.html',
