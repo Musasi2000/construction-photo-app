@@ -653,7 +653,7 @@ const App = {
 
     // Text color
     const textColor = tpl.cssClass.includes('bb-white') ? '#222222' : '#ffffff';
-    const borderColor = tpl.cssClass.includes('bb-white') ? '#999999' : 'rgba(255,255,255,0.4)';
+    const borderColor = tpl.cssClass.includes('bb-white') ? '#999999' : '#ffffff';
 
     // Title bar removed
     const titleH = 0;

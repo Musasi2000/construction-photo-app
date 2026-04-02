@@ -449,7 +449,7 @@ html, body {
   font-weight: 700;
   color: white;
   letter-spacing: 2px;
-  border-bottom: 1px solid rgba(255,255,255,0.3);
+  border-bottom: 1px solid rgba(255,255,255,0.9);
 }
 
 .bb-table {
@@ -457,7 +457,7 @@ html, body {
   border-collapse: collapse;
 }
 .bb-table td, .bb-table th {
-  border: 1px solid rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.9);
   padding: 3px 6px;
   font-size: 11px;
   color: white;
@@ -477,7 +477,7 @@ html, body {
   font-size: 11px;
   color: white;
   min-height: 24px;
-  border-top: 1px solid rgba(255,255,255,0.3);
+  border-top: 1px solid rgba(255,255,255,0.9);
 }
 
 /* Horizontal layout */
@@ -802,7 +802,7 @@ html, body {
   align-items: center;
   gap: 4px;
   padding: 12px 24px;
-  border: 1px solid rgba(255,255,255,0.3);
+  border: 1px solid rgba(255,255,255,0.9);
   border-radius: 12px;
   background: rgba(255,255,255,0.1);
   color: white;
