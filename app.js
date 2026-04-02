@@ -108,6 +108,7 @@ const App = {
   bbBorderWidth: 1, // table border width in px
   bbFrameWidth: 6,  // outer frame width in px
   bbCellPad: 8,     // text margin in px
+  bbDateFormat: 'slash', // 'slash' = 2026/04/03, 'kanji' = 2026年04月03日
   savedPresets: [],  // user-saved blackboard presets
   FRAME_COLORS: [
     { name: '木目', color: '#8B7332' },
@@ -458,6 +459,10 @@ const App = {
     // Load custom labels
     const savedLabels = await this.dbGet('settings', 'bblabels-' + id);
     this.bbCustomLabels = savedLabels ? savedLabels.value : {};
+
+    // Load date format
+    const savedDateFmt = await this.dbGet('settings', 'bbdatefmt-' + id);
+    this.bbDateFormat = savedDateFmt ? savedDateFmt.value : 'slash';
 
     await this.startCamera();
   },
@@ -951,8 +956,14 @@ const App = {
         html += `</div>`;
 
         if (field === 'date') {
-          const isoDate = this.bbData.date ? this.bbData.date.replace(/\//g, '-') : '';
+          const isoDate = this.dateToIso(this.bbData.date);
           html += `<label style="margin-left:0;"><input type="date" id="bb-edit-${field}" value="${isoDate}"></label>`;
+          html += `<div style="display:flex;gap:8px;margin-top:4px;margin-bottom:8px;">`;
+          html += `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text);background:var(--bg-surface);padding:6px 10px;border-radius:8px;border:1px solid ${this.bbDateFormat==='slash'?'var(--accent)':'var(--border)'};cursor:pointer;">`;
+          html += `<input type="radio" name="dateFormat" value="slash" ${this.bbDateFormat==='slash'?'checked':''} onchange="App.bbDateFormat='slash'"> 2026/04/03</label>`;
+          html += `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text);background:var(--bg-surface);padding:6px 10px;border-radius:8px;border:1px solid ${this.bbDateFormat==='kanji'?'var(--accent)':'var(--border)'};cursor:pointer;">`;
+          html += `<input type="radio" name="dateFormat" value="kanji" ${this.bbDateFormat==='kanji'?'checked':''} onchange="App.bbDateFormat='kanji'"> 2026年04月03日</label>`;
+          html += `</div>`;
         } else if (field === 'notes') {
           html += `<label style="margin-left:0;"><textarea id="bb-edit-${field}" rows="3">${this.esc(val)}</textarea></label>`;
         } else if (field === 'workType') {
@@ -1066,7 +1077,7 @@ const App = {
         const el = document.getElementById('bb-edit-' + field);
         if (!el) return;
         if (field === 'date') {
-          this.bbData[field] = el.value.replace(/-/g, '/');
+          this.bbData[field] = this.isoToDisplay(el.value);
         } else {
           this.bbData[field] = el.value;
         }
@@ -1079,6 +1090,7 @@ const App = {
       this.dbPut('settings', { key: 'bbdata-' + this.currentProject.id, value: this.bbData });
       this.dbPut('settings', { key: 'bbhidden-' + this.currentProject.id, value: this.bbHiddenFields });
       this.dbPut('settings', { key: 'bblabels-' + this.currentProject.id, value: this.bbCustomLabels });
+      this.dbPut('settings', { key: 'bbdatefmt-' + this.currentProject.id, value: this.bbDateFormat });
     }
   },
 
@@ -1174,6 +1186,7 @@ const App = {
       cellPad: this.bbCellPad,
       rowHeight: this.bbRowHeight,
       borderWidth: this.bbBorderWidth,
+      dateFormat: this.bbDateFormat,
       hiddenFields: [...this.bbHiddenFields],
       customLabels: { ...this.bbCustomLabels },
       bbData: { ...this.bbData },
@@ -1193,6 +1206,7 @@ const App = {
     if (preset.cellPad != null) this.bbCellPad = preset.cellPad;
     if (preset.rowHeight != null) this.bbRowHeight = preset.rowHeight;
     if (preset.borderWidth != null) this.bbBorderWidth = preset.borderWidth;
+    if (preset.dateFormat) this.bbDateFormat = preset.dateFormat;
     if (preset.hiddenFields) this.bbHiddenFields = [...preset.hiddenFields];
     if (preset.customLabels) this.bbCustomLabels = { ...preset.customLabels };
     if (preset.bbData) this.bbData = { ...this.bbData, ...preset.bbData };
@@ -1529,7 +1543,34 @@ const App = {
 
   todayStr() {
     const d = new Date();
-    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+    return this.formatDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  },
+
+  formatDate(y, m, d) {
+    const mm = String(m).padStart(2, '0');
+    const dd = String(d).padStart(2, '0');
+    if (this.bbDateFormat === 'kanji') {
+      return `${y}年${mm}月${dd}日`;
+    }
+    return `${y}/${mm}/${dd}`;
+  },
+
+  // Convert any date string to ISO (yyyy-mm-dd) for <input type="date">
+  dateToIso(str) {
+    if (!str) return '';
+    // Handle 2026年04月03日
+    const kanjiMatch = str.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (kanjiMatch) return `${kanjiMatch[1]}-${kanjiMatch[2].padStart(2,'0')}-${kanjiMatch[3].padStart(2,'0')}`;
+    // Handle 2026/04/03
+    return str.replace(/\//g, '-');
+  },
+
+  // Convert ISO date to current format
+  isoToDisplay(iso) {
+    if (!iso) return '';
+    const parts = iso.split('-');
+    if (parts.length !== 3) return iso;
+    return this.formatDate(parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]));
   },
 
   esc(str) {
