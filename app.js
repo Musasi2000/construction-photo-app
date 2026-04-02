@@ -73,6 +73,15 @@ const BB_TEMPLATES = [
     titleText: '工事写真',
     freeformField: true,
   },
+  {
+    id: 'custom',
+    name: 'カスタム',
+    cssClass: 'bb-green',
+    fields: ALL_FIELDS,
+    layout: 'vertical',
+    hasFrame: true,
+    titleText: '工事写真',
+  },
 ];
 
 // ─── Default Master Data ───
@@ -90,9 +99,10 @@ const App = {
   currentTemplate: BB_TEMPLATES[0],
   bbData: {},
   bbPosition: { x: 10, y: null }, // y=null means auto (bottom)
-  bbScale: 60,
+  bbScale: 80,
   bbOpacity: 0,
   bbFrameColor: '#8B7332',
+  bbHiddenFields: [], // fields hidden by user
   FRAME_COLORS: [
     { name: '木目', color: '#8B7332' },
     { name: '焦茶', color: '#4A2F1B' },
@@ -434,6 +444,10 @@ const App = {
       if (tpl) this.currentTemplate = tpl;
     }
 
+    // Load hidden fields
+    const savedHidden = await this.dbGet('settings', 'bbhidden-' + id);
+    this.bbHiddenFields = savedHidden ? savedHidden.value : [];
+
     await this.startCamera();
   },
 
@@ -674,11 +688,19 @@ const App = {
         ctx.fillText(line, bbX + 8, bodyY + 4 + i * (freeSize + 4), bbW - 16);
       });
     } else {
-      const fields = tpl.fields;
-      const rowH = (bbH - titleH) / (fields.length || 1);
+      // Build rows: custom rows or filtered fields
+      let rows;
+      if (tpl.id === 'custom') {
+        rows = (data.customRows || []).filter(r => r.label || r.value).map(r => ({ label: r.label, value: r.value }));
+      } else {
+        const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
+        rows = visibleFields.map(f => ({ label: FIELD_LABELS[f] || f, value: data[f] || '' }));
+      }
+
+      const rowH = (bbH - titleH) / (rows.length || 1);
       const labelW = bbW * 0.28;
 
-      fields.forEach((field, i) => {
+      rows.forEach((row, i) => {
         const rowY = bbY + titleH + i * rowH;
 
         // Row border
@@ -703,12 +725,11 @@ const App = {
         ctx.font = `bold ${fontSize}px 'Hiragino Kaku Gothic ProN', sans-serif`;
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(FIELD_LABELS[field] || field, bbX + 6, rowY + rowH / 2, labelW - 10);
+        ctx.fillText(row.label, bbX + 6, rowY + rowH / 2, labelW - 10);
 
         // Value
         ctx.font = `${fontSize}px 'Hiragino Kaku Gothic ProN', sans-serif`;
-        const val = data[field] || '';
-        ctx.fillText(val, bbX + labelW + 6, rowY + rowH / 2, bbW - labelW - 12);
+        ctx.fillText(row.value, bbX + labelW + 6, rowY + rowH / 2, bbW - labelW - 12);
       });
     }
 
@@ -744,9 +765,24 @@ const App = {
 
     if (tpl.layout === 'freeform') {
       html += `<div class="bb-free-body">${this.esc(data.freeText || 'タップして入力')}</div>`;
-    } else {
+    } else if (tpl.id === 'custom') {
+      const rows = data.customRows || [
+        { label: '工事名', value: data.constructionName || '' },
+        { label: '撮影箇所', value: data.location || '' },
+        { label: '撮影日', value: data.date || '' },
+        { label: '受注者', value: data.contractor || '' },
+      ];
       html += '<table class="bb-table"><tbody>';
-      tpl.fields.forEach(field => {
+      rows.forEach(row => {
+        if (row.label || row.value) {
+          html += `<tr><th>${this.esc(row.label)}</th><td>${this.esc(row.value) || '&nbsp;'}</td></tr>`;
+        }
+      });
+      html += '</tbody></table>';
+    } else {
+      const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
+      html += '<table class="bb-table"><tbody>';
+      visibleFields.forEach(field => {
         const val = data[field] || '';
         html += `<tr><th>${FIELD_LABELS[field]}</th><td>${this.esc(val) || '&nbsp;'}</td></tr>`;
       });
@@ -760,7 +796,7 @@ const App = {
 
     // Apply scale & position
     const scalePct = this.bbScale / 100;
-    const maxWidth = tpl.layout === 'horizontal' ? 350 : 240;
+    const maxWidth = tpl.layout === 'horizontal' ? 500 : 400;
     container.style.width = (maxWidth * scalePct) + 'px';
 
     const cameraContainer = document.querySelector('.camera-container');
@@ -840,10 +876,42 @@ const App = {
     const tpl = this.currentTemplate;
     let html = '';
 
+    // Field visibility toggles (not for freeform or custom)
+    if (tpl.layout !== 'freeform' && tpl.id !== 'custom') {
+      html += '<div style="margin-bottom:16px;"><span style="font-size:14px;color:var(--accent);font-weight:600;">表示項目</span>';
+      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;">';
+      tpl.fields.forEach(field => {
+        const checked = !this.bbHiddenFields.includes(field) ? 'checked' : '';
+        html += `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;color:var(--text);background:var(--bg-surface);padding:6px 10px;border-radius:8px;border:1px solid var(--border);cursor:pointer;">`;
+        html += `<input type="checkbox" ${checked} onchange="App.toggleFieldVisibility('${field}')" style="width:18px;height:18px;">${FIELD_LABELS[field]}</label>`;
+      });
+      html += '</div></div>';
+      html += '<div style="border-bottom:1px solid var(--border);margin-bottom:16px;"></div>';
+    }
+
     if (tpl.layout === 'freeform') {
       html += `<label>自由記述<textarea id="bb-edit-freeText" rows="6">${this.esc(this.bbData.freeText || '')}</textarea></label>`;
+    } else if (tpl.id === 'custom') {
+      // Custom template: editable labels and values
+      const rows = this.bbData.customRows || [
+        { label: '工事名', value: this.bbData.constructionName || '' },
+        { label: '撮影箇所', value: this.bbData.location || '' },
+        { label: '撮影日', value: this.bbData.date || '' },
+        { label: '受注者', value: this.bbData.contractor || '' },
+      ];
+      html += '<div id="custom-rows">';
+      rows.forEach((row, i) => {
+        html += `<div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;">`;
+        html += `<input type="text" id="custom-label-${i}" value="${this.esc(row.label)}" placeholder="項目名" style="width:90px;min-height:44px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface);color:var(--text);font-size:14px;">`;
+        html += `<input type="text" id="custom-value-${i}" value="${this.esc(row.value)}" placeholder="内容" style="flex:1;min-height:44px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--bg-surface);color:var(--text);font-size:14px;">`;
+        html += `<button onclick="App.removeCustomRow(${i})" style="width:36px;height:36px;border:none;background:var(--danger);color:white;border-radius:50%;font-size:18px;cursor:pointer;">✕</button>`;
+        html += `</div>`;
+      });
+      html += '</div>';
+      html += `<button onclick="App.addCustomRow()" style="width:100%;padding:12px;border:1px dashed var(--border);background:transparent;color:var(--text-secondary);border-radius:8px;font-size:14px;cursor:pointer;">＋ 行を追加</button>`;
     } else {
-      tpl.fields.forEach(field => {
+      const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
+      visibleFields.forEach(field => {
         const label = FIELD_LABELS[field];
         const val = this.bbData[field] || '';
 
@@ -898,13 +966,52 @@ const App = {
     return locations.slice(-10);
   },
 
+  toggleFieldVisibility(field) {
+    const idx = this.bbHiddenFields.indexOf(field);
+    if (idx >= 0) {
+      this.bbHiddenFields.splice(idx, 1);
+    } else {
+      this.bbHiddenFields.push(field);
+    }
+  },
+
+  addCustomRow() {
+    if (!this.bbData.customRows) this.bbData.customRows = [];
+    // Save current rows first
+    this._readCustomRows();
+    this.bbData.customRows.push({ label: '', value: '' });
+    this.showBBEditor(); // re-render
+  },
+
+  removeCustomRow(index) {
+    this._readCustomRows();
+    this.bbData.customRows.splice(index, 1);
+    this.showBBEditor(); // re-render
+  },
+
+  _readCustomRows() {
+    const rows = [];
+    let i = 0;
+    while (true) {
+      const lbl = document.getElementById('custom-label-' + i);
+      const val = document.getElementById('custom-value-' + i);
+      if (!lbl || !val) break;
+      rows.push({ label: lbl.value, value: val.value });
+      i++;
+    }
+    if (rows.length > 0) this.bbData.customRows = rows;
+  },
+
   saveBBEdit() {
     const tpl = this.currentTemplate;
     if (tpl.layout === 'freeform') {
       const el = document.getElementById('bb-edit-freeText');
       if (el) this.bbData.freeText = el.value;
+    } else if (tpl.id === 'custom') {
+      this._readCustomRows();
     } else {
-      tpl.fields.forEach(field => {
+      const visibleFields = tpl.fields.filter(f => !this.bbHiddenFields.includes(f));
+      visibleFields.forEach(field => {
         const el = document.getElementById('bb-edit-' + field);
         if (!el) return;
         if (field === 'date') {
@@ -919,6 +1026,7 @@ const App = {
     // Persist
     if (this.currentProject) {
       this.dbPut('settings', { key: 'bbdata-' + this.currentProject.id, value: this.bbData });
+      this.dbPut('settings', { key: 'bbhidden-' + this.currentProject.id, value: this.bbHiddenFields });
     }
   },
 
@@ -954,6 +1062,17 @@ const App = {
 
       if (tpl.layout === 'freeform') {
         preview += `<div class="bb-free-body" style="font-size:9px;min-height:30px;">${this.esc(previewData.freeText)}</div>`;
+      } else if (tpl.id === 'custom') {
+        const customPreview = [
+          { label: '項目A', value: '自由入力' },
+          { label: '項目B', value: '自由入力' },
+          { label: '日付', value: this.todayStr() },
+        ];
+        preview += '<table class="bb-table"><tbody>';
+        customPreview.forEach(r => {
+          preview += `<tr><th style="font-size:8px;width:50px;padding:1px 3px;">${r.label}</th><td style="font-size:8px;padding:1px 3px;">${r.value}</td></tr>`;
+        });
+        preview += '</tbody></table>';
       } else {
         preview += '<table class="bb-table"><tbody>';
         tpl.fields.forEach(field => {
