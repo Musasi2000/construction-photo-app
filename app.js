@@ -90,6 +90,40 @@ const DEFAULT_MASTERS = {
   category: ['躯体工事','仕上工事','基礎工事','鉄骨工事','木工事','防水工事','塗装工事','内装工事'],
 };
 
+// ─── Built-in Presets ───
+const BUILTIN_PRESETS = [
+  {
+    id: 'builtin_mamorisu',
+    name: 'まもりす検査',
+    builtin: true,
+    templateId: 'simple-green',
+    scale: 80,
+    opacity: 0,
+    frameColor: '#8B7332',
+    frameWidth: 6,
+    cellPad: 8,
+    rowHeight: 10,
+    borderWidth: 1,
+    dateFormat: 'slash',
+    hiddenFields: ['contractor'],
+    customLabels: {
+      constructionName: '申込受付番号',
+      location: '検査員番号',
+      date: '現場検査日',
+    },
+    bbData: {
+      constructionName: '',
+      location: 'HBS00172',
+      workType: '',
+      category: '',
+      subcategory: '',
+      date: '',
+      contractor: '',
+      notes: '',
+    },
+  },
+];
+
 // ═══════════════════════════════════════════════════════════════
 // App State
 // ═══════════════════════════════════════════════════════════════
@@ -1195,6 +1229,16 @@ const App = {
   async loadPresets() {
     const data = await this.dbGet('settings', 'bb-presets');
     this.savedPresets = data ? data.value : [];
+
+    // Add built-in presets if not already present
+    let added = false;
+    BUILTIN_PRESETS.forEach(bp => {
+      if (!this.savedPresets.find(p => p.id === bp.id)) {
+        this.savedPresets.push({ ...bp });
+        added = true;
+      }
+    });
+    if (added) await this._savePresets();
   },
 
   async _savePresets() {
@@ -1234,7 +1278,11 @@ const App = {
     if (preset.dateFormat) this.bbDateFormat = preset.dateFormat;
     if (preset.hiddenFields) this.bbHiddenFields = [...preset.hiddenFields];
     if (preset.customLabels) this.bbCustomLabels = { ...preset.customLabels };
-    if (preset.bbData) this.bbData = { ...this.bbData, ...preset.bbData };
+    if (preset.bbData) {
+      this.bbData = { ...this.bbData, ...preset.bbData };
+      // Set today's date if date is empty
+      if (!this.bbData.date) this.bbData.date = this.todayStr();
+    }
 
     // Sync UI controls
     this._syncAllControls();
